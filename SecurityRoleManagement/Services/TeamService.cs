@@ -6,7 +6,13 @@ namespace CustomAPIs.Services
 {
     public interface ITeamService
     {
-        EntityCollection RetrieveTeams(
+        EntityCollection RetrieveTeamsWithRoles(
+            IOrganizationService service,
+            string[] teamIds,
+            ITracingService tracer
+        );
+
+        EntityCollection RetrieveTeamsWithBusinessUnit(
             IOrganizationService service,
             string[] teamIds,
             ITracingService tracer
@@ -15,7 +21,7 @@ namespace CustomAPIs.Services
 
     public class TeamService : ITeamService
     {
-        public EntityCollection RetrieveTeams(
+        public EntityCollection RetrieveTeamsWithBusinessUnit(
             IOrganizationService service,
             string[] teamIds,
             ITracingService tracer
@@ -25,7 +31,49 @@ namespace CustomAPIs.Services
             {
                 QueryExpression teamsQuery = new QueryExpression("team")
                 {
-                    ColumnSet = new ColumnSet("teamid", "name", "businessunitid"),
+                    ColumnSet = new ColumnSet("teamid", "name", "businessunitid", "isdefault"),
+                    LinkEntities =
+                    {
+                        new LinkEntity()
+                        {
+                            LinkFromEntityName = "team",
+                            LinkFromAttributeName = "teamid",
+                            LinkToEntityName = "businessunit",
+                            LinkToAttributeName = "businessunitid",
+                            Columns = new ColumnSet("businessunitid", "name"),
+                            EntityAlias = "businessunit",
+                            JoinOperator = JoinOperator.LeftOuter,
+                        },
+                    },
+                };
+                FilterExpression teamFilter = new FilterExpression(LogicalOperator.Or);
+                foreach (var team in teamIds)
+                {
+                    teamFilter.AddCondition(
+                        new ConditionExpression("teamid", ConditionOperator.Equal, team)
+                    );
+                }
+                teamsQuery.Criteria.AddFilter(teamFilter);
+                return service.RetrieveMultiple(teamsQuery);
+            }
+            catch (Exception ex)
+            {
+                tracer.Trace($"Error retrieving teams: {ex.Message}");
+                throw;
+            }
+        }
+
+        public EntityCollection RetrieveTeamsWithRoles(
+            IOrganizationService service,
+            string[] teamIds,
+            ITracingService tracer
+        )
+        {
+            try
+            {
+                QueryExpression teamsQuery = new QueryExpression("team")
+                {
+                    ColumnSet = new ColumnSet("teamid", "name", "businessunitid", "isdefault"),
                     LinkEntities =
                     {
                         new LinkEntity()
