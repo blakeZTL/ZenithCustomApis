@@ -1,20 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CustomAPIs.Services;
+using CustomAPIs.Utilities;
 using Microsoft.Xrm.Sdk;
-using SecurityRoleManagement.Services;
-using SecurityRoleManagement.Utilities;
 
-namespace SecurityRoleManagement
+namespace CustomAPIs.SecurityRoleManagement
 {
-    public class ManageUserRoleAssignment : BaseRoleAssignmentPlugin
+    public class ManageTeamRoleAssignments : BaseRoleAssignmentPlugin
     {
-        private readonly ISystemUserService _systemUserService;
+        private readonly ITeamService _teamService;
 
-        public ManageUserRoleAssignment()
-            : base(typeof(ManageUserRoleAssignment), new RoleService(), new RoleAssignmentService())
+        public ManageTeamRoleAssignments()
+            : base(
+                typeof(ManageTeamRoleAssignments),
+                new RoleService(),
+                new RoleAssignmentService()
+            )
         {
-            _systemUserService = new SystemUserService();
+            _teamService = new TeamService();
         }
 
         protected override void ExecuteCdsPlugin(ILocalPluginContext localPluginContext)
@@ -27,9 +31,8 @@ namespace SecurityRoleManagement
             var tracer = localPluginContext.TracingService;
 
             OutputParameters outputParameters = new OutputParameters(false, "None");
-            string wasSuccessfulKey = "zen_ManageUserRoleAssignments_WasSuccessful";
-            string errorMessageKey = "zen_ManageUserRoleAssignments_ErrorMessage";
-
+            string wasSuccessfulKey = "zen_ManageTeamRoleAssignments_WasSuccessful";
+            string errorMessageKey = "zen_ManageTeamRoleAssignments_ErrorMessage";
             SetOutputParameters(
                 outputParameters,
                 context,
@@ -41,12 +44,12 @@ namespace SecurityRoleManagement
             string errorMessage;
 
             context.InputParameters.TryGetValue(
-                "zen_ManageUserRoleAssignments_RoleNames",
+                "zen_ManageTeamRoleAssignments_RoleNames",
                 out string[] roles
             );
             if (roles == null || roles.Length == 0)
             {
-                errorMessage = "No roles to manage for users";
+                errorMessage = "No roles to manage for teams";
                 tracer.Trace(errorMessage);
                 outputParameters.ErrorMessage = errorMessage;
                 SetOutputParameters(
@@ -61,12 +64,12 @@ namespace SecurityRoleManagement
             tracer.Trace($"Assigning {roles.Length} roles to the team");
 
             context.InputParameters.TryGetValue(
-                "zen_ManageUserRoleAssignments_SystemUserIds",
-                out string[] systerUsers
+                "zen_ManageTeamRoleAssignments_TeamIds",
+                out string[] teams
             );
-            if (systerUsers == null || systerUsers.Length == 0)
+            if (teams == null || teams.Length == 0)
             {
-                errorMessage = "No users to manage roles for";
+                errorMessage = "No teams to manage roles for";
                 tracer.Trace(errorMessage);
                 outputParameters.ErrorMessage = errorMessage;
                 SetOutputParameters(
@@ -78,15 +81,21 @@ namespace SecurityRoleManagement
                 );
                 return;
             }
-            tracer.Trace($"Assigning roles to {systerUsers.Length} users");
+            tracer.Trace($"Assigning roles to {teams.Length} teams");
 
             context.InputParameters.TryGetValue(
-                "zen_ManageUserRoleAssignments_WillAssign",
+                "zen_ManageTeamRoleAssignments_WillAssign",
                 out bool willAssign
             );
             tracer.Trace($"WillAssign is {willAssign}");
 
-            var rolesCollection = RetrieveRoles(sysService, roles, tracer, out errorMessage);
+            var rolesCollection = PluginUtilities.RetrieveRoles(
+                _roleService,
+                sysService,
+                roles,
+                tracer,
+                out errorMessage
+            );
             if (rolesCollection == null)
             {
                 outputParameters.ErrorMessage = errorMessage;
@@ -100,15 +109,10 @@ namespace SecurityRoleManagement
                 return;
             }
 
-            EntityCollection systemUsersCollection;
+            EntityCollection teamsCollection;
             try
             {
-                systemUsersCollection = RetrieveEntities(
-                    sysService,
-                    systerUsers,
-                    _systemUserService.RetrieveSystemUsers,
-                    tracer
-                );
+                teamsCollection = _teamService.RetrieveTeams(sysService, teams, tracer);
             }
             catch (Exception ex)
             {
@@ -122,19 +126,18 @@ namespace SecurityRoleManagement
                 );
                 return;
             }
-
-            var distinctSystemUserIds = GetDistinctEntityIds(systemUsersCollection, "systemuserid");
-            if (distinctSystemUserIds.Count != systerUsers.Length)
+            var distinctTeamIds = PluginUtilities.GetDistinctEntityIds(teamsCollection, "teamid");
+            if (distinctTeamIds.Count != teams.Length)
             {
-                foreach (var user in systerUsers)
+                foreach (var team in teams)
                 {
-                    if (!distinctSystemUserIds.Contains(Guid.Parse(user)))
+                    if (!distinctTeamIds.Contains(Guid.Parse(team)))
                     {
-                        tracer.Trace($"User {user} was not found");
+                        tracer.Trace($"Team {team} was not found");
                     }
                 }
                 outputParameters.ErrorMessage =
-                    $"Not all users were found. ({distinctSystemUserIds.Count}/{systerUsers.Length})";
+                    $"Not all teams were found. ({distinctTeamIds.Count}/{teams.Length})";
                 SetOutputParameters(
                     outputParameters,
                     context,
@@ -144,18 +147,18 @@ namespace SecurityRoleManagement
                 );
                 return;
             }
-            tracer.Trace($"Retrieved {systemUsersCollection.Entities.Count} users");
+            tracer.Trace($"Retrieved {teamsCollection.Entities.Count} teams");
 
-            foreach (Guid systemUserId in distinctSystemUserIds)
+            foreach (Guid teamId in distinctTeamIds)
             {
-                var systemUserEntity = systemUsersCollection.Entities.First(t =>
-                    t.GetAttributeValue<Guid>("systemuserid") == systemUserId
+                var teamEntity = teamsCollection.Entities.First(t =>
+                    t.GetAttributeValue<Guid>("teamid") == teamId
                 );
                 var rolesToAssign = RoleAssignmentService.ParseRolesToAssignOrRemove(
                     roles,
                     rolesCollection,
-                    systemUsersCollection,
-                    systemUserEntity,
+                    teamsCollection,
+                    teamEntity,
                     willAssign ? AssignmnetType.Assign : AssignmnetType.Remove,
                     tracer,
                     out errorMessage
@@ -173,18 +176,12 @@ namespace SecurityRoleManagement
                     return;
                 }
                 tracer.Trace(
-                    $"Assigning {rolesToAssign.Count} roles to {systemUserEntity.GetAttributeValue<string>("internalemailaddress")}"
+                    $"Assigning {rolesToAssign.Count} roles to {teamEntity.GetAttributeValue<string>("name")}"
                 );
 
                 try
                 {
-                    AssignOrRemoveRoles(
-                        sysService,
-                        systemUserId,
-                        rolesToAssign,
-                        tracer,
-                        willAssign
-                    );
+                    AssignOrRemoveRoles(sysService, teamId, rolesToAssign, tracer, willAssign);
                 }
                 catch (Exception ex)
                 {
@@ -220,11 +217,11 @@ namespace SecurityRoleManagement
         {
             if (willAssign)
             {
-                _roleAssignmentService.AssignRolesToUser(service, entityId, rolesToAssign, tracer);
+                _roleAssignmentService.AssignRolesToTeam(service, entityId, rolesToAssign, tracer);
             }
             else
             {
-                _roleAssignmentService.RemoveRolesFromUser(
+                _roleAssignmentService.RemoveRolesFromTeam(
                     service,
                     entityId,
                     rolesToAssign,

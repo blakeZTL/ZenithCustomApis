@@ -14,7 +14,7 @@ using System.Linq;
 using System.ServiceModel;
 using Microsoft.Xrm.Sdk;
 
-namespace SecurityRoleManagement
+namespace CustomAPIs
 {
     /// <summary>
     /// Base class for all plug-in classes.

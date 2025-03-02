@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using CustomAPIs.Services;
 using Microsoft.Xrm.Sdk;
 using Moq;
-using SecurityRoleManagement.Services;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace SecurityRoleManagement.Tests
+namespace CustomAPIs.Tests
 {
     public class RoleAssignmentServiceTests
     {

@@ -96,8 +96,8 @@
   <ItemGroup>
     <Compile Include="AssignRolesToTeams.cs" />
     <Compile Include="BaseRoleAssignmentPlugin.cs" />
-    <Compile Include="ManageTeamRoleAssignments.cs" />
-    <Compile Include="ManageUserRoleAssignment.cs" />
+    <Compile Include="SecurityRoleManagement\ManageTeamRoleAssignments.cs" />
+    <Compile Include="SecurityRoleManagement\ManageUserRoleAssignment.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PluginBase.cs" />
     <Compile Include="Services\RoleAssignmentService.cs" />

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CustomAPIs.Services;
 using Microsoft.Xrm.Sdk;
-using SecurityRoleManagement.Services;
 
-namespace SecurityRoleManagement.Utilities
+namespace CustomAPIs.Utilities
 {
     public static class PluginUtilities
     {

@@ -4,7 +4,7 @@ using System.Linq;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 
-namespace SecurityRoleManagement.Services
+namespace CustomAPIs.Services
 {
     public interface IRoleAssignmentService
     {

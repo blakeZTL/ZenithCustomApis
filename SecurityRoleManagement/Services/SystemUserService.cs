@@ -2,7 +2,7 @@
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 
-namespace SecurityRoleManagement.Services
+namespace CustomAPIs.Services
 {
     public interface ISystemUserService
     {

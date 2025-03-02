@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using CustomAPIs.Services;
+using CustomAPIs.Utilities;
 using Microsoft.Xrm.Sdk;
-using SecurityRoleManagement.Services;
-using SecurityRoleManagement.Utilities;
 
-namespace SecurityRoleManagement
+namespace CustomAPIs
 {
     public abstract class BaseRoleAssignmentPlugin : PluginBase
     {

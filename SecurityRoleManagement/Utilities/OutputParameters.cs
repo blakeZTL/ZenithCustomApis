@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace SecurityRoleManagement.Utilities
+namespace CustomAPIs.Utilities
 {
     public class OutputParameters
     {
