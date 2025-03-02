@@ -95,6 +95,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssignRolesToTeams.cs" />
+    <Compile Include="BaseRoleAssignmentPlugin.cs" />
     <Compile Include="ManageTeamRoleAssignments.cs" />
     <Compile Include="ManageUserRoleAssignment.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -104,7 +105,9 @@
     <Compile Include="Services\SystemUserService.cs" />
     <Compile Include="Services\TeamService.cs" />
     <Compile Include="Tests\RoleAssignmentServiceTests.cs" />
+    <Compile Include="Utilities\OutputParameters.cs" />
     <Compile Include="Utilities\OutputUtilities.cs" />
+    <Compile Include="Utilities\PluginUtilities.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.6.2">
