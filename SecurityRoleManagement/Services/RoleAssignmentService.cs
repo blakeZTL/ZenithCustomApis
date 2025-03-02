@@ -164,8 +164,8 @@ namespace SecurityRoleManagement.Services
         public static List<Entity> ParseRolesToAssignOrRemove(
             string[] roleNames,
             EntityCollection roles,
-            EntityCollection teams,
-            Entity team,
+            EntityCollection entities,
+            Entity entity,
             AssignmnetType assignmentType,
             ITracingService tracer,
             out string errorMessage,
@@ -176,10 +176,22 @@ namespace SecurityRoleManagement.Services
             errorMessage = string.Empty;
             var rolesToAssignOrRemove = new List<Entity>();
 
+            string entityLogicalName = entity.LogicalName;
+            if (entityLogicalName != "team" && entityLogicalName != "systemuser")
+            {
+                tracer.Trace("Invalid entity type");
+                errorMessage = "Invalid entity type";
+                return null;
+            }
+            string entityIdName = entityLogicalName + "id";
+            string nameAttribute = entityLogicalName == "team" ? "name" : "internalemailaddress";
+
             try
             {
-                var teamName = team.GetAttributeValue<string>("name");
-                var teamBusinessUnit = team.GetAttributeValue<EntityReference>("businessunitid");
+                var entityName = entity.GetAttributeValue<string>(nameAttribute);
+                var entityBusinessUnit = entity.GetAttributeValue<EntityReference>(
+                    "businessunitid"
+                );
 
                 // Filter roles based on business unit if required
                 if (requireSameBusinessUnit)
@@ -187,7 +199,7 @@ namespace SecurityRoleManagement.Services
                     rolesToAssignOrRemove = roles
                         .Entities.Where(r =>
                             r.GetAttributeValue<EntityReference>("businessunitid").Id
-                            == teamBusinessUnit.Id
+                            == entityBusinessUnit.Id
                         )
                         .ToList();
                 }
@@ -213,27 +225,27 @@ namespace SecurityRoleManagement.Services
                 }
 
                 tracer.Trace(
-                    $"{rolesToAssignOrRemove.Count} roles found to {(assignmentType == AssignmnetType.Assign ? "assign to" : "remove from")} {teamName}"
+                    $"{rolesToAssignOrRemove.Count} roles found to {(assignmentType == AssignmnetType.Assign ? "assign to" : "remove from")} {entityName}"
                 );
 
                 // Filter out roles that are already assigned to the team
-                var relatedTeamRecords = teams
-                    .Entities.Where(t => t.GetAttributeValue<Guid>("teamid") == team.Id)
+                var relatedRecords = entities
+                    .Entities.Where(t => t.GetAttributeValue<Guid>(entityIdName) == entity.Id)
                     .ToList();
 
-                tracer.Trace($"Related team records count: {relatedTeamRecords.Count}");
+                tracer.Trace($"Related {entityLogicalName} records count: {relatedRecords.Count}");
 
                 rolesToAssignOrRemove = rolesToAssignOrRemove
                     .Where(r =>
                     {
-                        if (relatedTeamRecords.Count == 0)
+                        if (relatedRecords.Count == 0)
                             if (assignmentType == AssignmnetType.Assign)
                                 return true;
                             else
                                 return false;
 
                         var roleId = r.Id; // Ensure the role ID is correctly retrieved
-                        var isAssigned = relatedTeamRecords.Any(t =>
+                        var isAssigned = relatedRecords.Any(t =>
                         {
                             var roleAlias = t.GetAttributeValue<AliasedValue>("role.roleid");
                             if (roleAlias == null || roleAlias.Value == null)
