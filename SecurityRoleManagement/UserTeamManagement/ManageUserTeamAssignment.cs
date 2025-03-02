@@ -14,7 +14,7 @@ namespace CustomAPI.UserTeamManagement
         internal class InputParameters
         {
             public const string TeamIds = "zen_ManageUserTeamAssignments_TeamIds";
-            public const string UserIds = "zen_ManageUserTeamAssignments_UserIds";
+            public const string UserIds = "zen_ManageUserTeamAssignments_SystemUserIds";
             public const string WillAssign = "zen_ManageUserTeamAssignments_WillAssign";
         }
 
@@ -57,6 +57,12 @@ namespace CustomAPI.UserTeamManagement
             {
                 errorMessage = "Users and teams required";
                 tracer.Trace(errorMessage);
+                tracer.Trace(
+                    teamIds == null ? "TeamIds is null" : $"TeamIds length: {teamIds.Length}"
+                );
+                tracer.Trace(
+                    userIds == null ? "UserIds is null" : $"UserIds length: {userIds.Length}"
+                );
                 outputParameters.ErrorMessage = errorMessage;
                 PluginUtilities.SetOutputParameters(
                     outputParameters.ToDictionary(wasSuccessfulKey, errorMessageKey),
