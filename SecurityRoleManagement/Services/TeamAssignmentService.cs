@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 
@@ -39,7 +37,7 @@ namespace CustomAPI.Services
                 RelatedEntities = new EntityReferenceCollection(
                     teamIds.Select(id => new EntityReference("team", id)).ToList()
                 ),
-                Relationship = new Relationship("teammembership"),
+                Relationship = new Relationship("teammembership_association"),
             };
 
             try
@@ -67,7 +65,7 @@ namespace CustomAPI.Services
                 RelatedEntities = new EntityReferenceCollection(
                     teamIds.Select(id => new EntityReference("team", id)).ToList()
                 ),
-                Relationship = new Relationship("teammembership"),
+                Relationship = new Relationship("teammembership_association"),
             };
 
             try
