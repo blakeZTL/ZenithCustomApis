@@ -112,7 +112,7 @@ namespace CustomAPIs.SecurityRoleManagement
             EntityCollection teamsCollection;
             try
             {
-                teamsCollection = _teamService.RetrieveTeams(sysService, teams, tracer);
+                teamsCollection = _teamService.RetrieveTeamsWithRoles(sysService, teams, tracer);
             }
             catch (Exception ex)
             {
