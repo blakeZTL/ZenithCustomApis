@@ -3,49 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xrm.Sdk;
 using SecurityRoleManagement.Services;
-using static SecurityRoleManagement.Utilities.OutputUtilities;
+using SecurityRoleManagement.Utilities;
 
 namespace SecurityRoleManagement
 {
-    public class ManageTeamRoleAssignments : PluginBase
+    public class ManageTeamRoleAssignments : BaseRoleAssignmentPlugin
     {
-        internal class OutputParameters
-        {
-            internal bool ManageTeamRoleAssignments_WasSuccessful { get; set; }
-            internal string ManageTeamRoleAssignments_ErrorMessage { get; set; }
-
-            internal OutputParameters(bool wasSuccesful, string errorMessage)
-            {
-                ManageTeamRoleAssignments_ErrorMessage = errorMessage;
-                ManageTeamRoleAssignments_WasSuccessful = wasSuccesful;
-            }
-
-            internal Dictionary<string, object> ToDictionary()
-            {
-                return new Dictionary<string, object>
-                {
-                    {
-                        "zen_ManageTeamRoleAssignments_WasSuccessful",
-                        ManageTeamRoleAssignments_WasSuccessful
-                    },
-                    {
-                        "zen_ManageTeamRoleAssignments_ErrorMessage",
-                        ManageTeamRoleAssignments_ErrorMessage
-                    },
-                };
-            }
-        }
-
-        private readonly IRoleService _roleService;
         private readonly ITeamService _teamService;
-        private readonly IRoleAssignmentService _roleAssignmentService;
 
         public ManageTeamRoleAssignments()
-            : base(typeof(ManageTeamRoleAssignments))
+            : base(
+                typeof(ManageTeamRoleAssignments),
+                new RoleService(),
+                new RoleAssignmentService()
+            )
         {
-            _roleService = new RoleService();
             _teamService = new TeamService();
-            _roleAssignmentService = new RoleAssignmentService();
         }
 
         protected override void ExecuteCdsPlugin(ILocalPluginContext localPluginContext)
@@ -58,8 +31,17 @@ namespace SecurityRoleManagement
             var tracer = localPluginContext.TracingService;
 
             OutputParameters outputParameters = new OutputParameters(false, "None");
+            string wasSuccessfulKey = "zen_ManageTeamRoleAssignments_WasSuccessful";
+            string errorMessageKey = "zen_ManageTeamRoleAssignments_ErrorMessage";
+            SetOutputParameters(
+                outputParameters,
+                context,
+                tracer,
+                wasSuccessfulKey,
+                errorMessageKey
+            );
 
-            SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+            string errorMessage;
 
             context.InputParameters.TryGetValue(
                 "zen_ManageTeamRoleAssignments_RoleNames",
@@ -67,10 +49,16 @@ namespace SecurityRoleManagement
             );
             if (roles == null || roles.Length == 0)
             {
-                var errorMessage = "No roles to manage for teams";
+                errorMessage = "No roles to manage for teams";
                 tracer.Trace(errorMessage);
-                outputParameters.ManageTeamRoleAssignments_ErrorMessage = errorMessage;
-                SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                outputParameters.ErrorMessage = errorMessage;
+                SetOutputParameters(
+                    outputParameters,
+                    context,
+                    tracer,
+                    wasSuccessfulKey,
+                    errorMessageKey
+                );
                 return;
             }
             tracer.Trace($"Assigning {roles.Length} roles to the team");
@@ -81,10 +69,16 @@ namespace SecurityRoleManagement
             );
             if (teams == null || teams.Length == 0)
             {
-                var errorMessage = "No teams to manage roles for";
+                errorMessage = "No teams to manage roles for";
                 tracer.Trace(errorMessage);
-                outputParameters.ManageTeamRoleAssignments_ErrorMessage = errorMessage;
-                SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                outputParameters.ErrorMessage = errorMessage;
+                SetOutputParameters(
+                    outputParameters,
+                    context,
+                    tracer,
+                    wasSuccessfulKey,
+                    errorMessageKey
+                );
                 return;
             }
             tracer.Trace($"Assigning roles to {teams.Length} teams");
@@ -95,32 +89,25 @@ namespace SecurityRoleManagement
             );
             tracer.Trace($"WillAssign is {willAssign}");
 
-            //context.InputParameters.TryGetValue(
-            //    "zen_ManageTeamRoleAssignments_RequireSameBusinessUnit",
-            //    out bool requireSameBusinessUnit
-            //);
-            //if (requireSameBusinessUnit)
-            //    tracer.Trace("RequireSameBusinessUnit is true");
-
-            EntityCollection rolesCollection;
-            try
+            var rolesCollection = PluginUtilities.RetrieveRoles(
+                _roleService,
+                sysService,
+                roles,
+                tracer,
+                out errorMessage
+            );
+            if (rolesCollection == null)
             {
-                rolesCollection = _roleService.RetrieveRoles(sysService, roles, tracer);
-            }
-            catch (Exception ex)
-            {
-                outputParameters.ManageTeamRoleAssignments_ErrorMessage = $"Error: {ex.Message}";
-                SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                outputParameters.ErrorMessage = errorMessage;
+                SetOutputParameters(
+                    outputParameters,
+                    context,
+                    tracer,
+                    wasSuccessfulKey,
+                    errorMessageKey
+                );
                 return;
             }
-            if (rolesCollection.Entities.Count < roles.Length)
-            {
-                outputParameters.ManageTeamRoleAssignments_ErrorMessage =
-                    $"Not all roles were found. ({rolesCollection.Entities.Count}/{roles.Length})";
-                SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
-                return;
-            }
-            tracer.Trace($"Retrieved {rolesCollection.Entities.Count} roles");
 
             EntityCollection teamsCollection;
             try
@@ -129,14 +116,17 @@ namespace SecurityRoleManagement
             }
             catch (Exception ex)
             {
-                outputParameters.ManageTeamRoleAssignments_ErrorMessage = $"Error: {ex.Message}";
-                SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                outputParameters.ErrorMessage = $"Error: {ex.Message}";
+                SetOutputParameters(
+                    outputParameters,
+                    context,
+                    tracer,
+                    wasSuccessfulKey,
+                    errorMessageKey
+                );
                 return;
             }
-            var distinctTeamIds = teamsCollection
-                .Entities.Select(t => t.GetAttributeValue<Guid>("teamid"))
-                .Distinct()
-                .ToList();
+            var distinctTeamIds = PluginUtilities.GetDistinctEntityIds(teamsCollection, "teamid");
             if (distinctTeamIds.Count != teams.Length)
             {
                 foreach (var team in teams)
@@ -146,9 +136,15 @@ namespace SecurityRoleManagement
                         tracer.Trace($"Team {team} was not found");
                     }
                 }
-                outputParameters.ManageTeamRoleAssignments_ErrorMessage =
+                outputParameters.ErrorMessage =
                     $"Not all teams were found. ({distinctTeamIds.Count}/{teams.Length})";
-                SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                SetOutputParameters(
+                    outputParameters,
+                    context,
+                    tracer,
+                    wasSuccessfulKey,
+                    errorMessageKey
+                );
                 return;
             }
             tracer.Trace($"Retrieved {teamsCollection.Entities.Count} teams");
@@ -165,12 +161,18 @@ namespace SecurityRoleManagement
                     teamEntity,
                     willAssign ? AssignmnetType.Assign : AssignmnetType.Remove,
                     tracer,
-                    out string errorMessage
+                    out errorMessage
                 );
                 if (rolesToAssign == null || errorMessage != string.Empty)
                 {
-                    outputParameters.ManageTeamRoleAssignments_ErrorMessage = errorMessage;
-                    SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                    outputParameters.ErrorMessage = errorMessage;
+                    SetOutputParameters(
+                        outputParameters,
+                        context,
+                        tracer,
+                        wasSuccessfulKey,
+                        errorMessageKey
+                    );
                     return;
                 }
                 tracer.Trace(
@@ -179,36 +181,53 @@ namespace SecurityRoleManagement
 
                 try
                 {
-                    if (willAssign)
-                    {
-                        _roleAssignmentService.AssignRolesToTeam(
-                            sysService,
-                            teamId,
-                            rolesToAssign,
-                            tracer
-                        );
-                    }
-                    else
-                    {
-                        _roleAssignmentService.RemoveRolesFromTeam(
-                            sysService,
-                            teamId,
-                            rolesToAssign,
-                            tracer
-                        );
-                    }
+                    AssignOrRemoveRoles(sysService, teamId, rolesToAssign, tracer, willAssign);
                 }
                 catch (Exception ex)
                 {
-                    outputParameters.ManageTeamRoleAssignments_ErrorMessage =
-                        $"Error: {ex.Message}";
-                    SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+                    outputParameters.ErrorMessage = $"Error: {ex.Message}";
+                    SetOutputParameters(
+                        outputParameters,
+                        context,
+                        tracer,
+                        wasSuccessfulKey,
+                        errorMessageKey
+                    );
                     return;
                 }
             }
-            outputParameters.ManageTeamRoleAssignments_WasSuccessful = true;
-            outputParameters.ManageTeamRoleAssignments_ErrorMessage = "None";
-            SetOutputParameters(outputParameters.ToDictionary(), context, tracer);
+            outputParameters.WasSuccessful = true;
+            outputParameters.ErrorMessage = "None";
+            SetOutputParameters(
+                outputParameters,
+                context,
+                tracer,
+                wasSuccessfulKey,
+                errorMessageKey
+            );
+        }
+
+        protected override void AssignOrRemoveRoles(
+            IOrganizationService service,
+            Guid entityId,
+            List<Entity> rolesToAssign,
+            ITracingService tracer,
+            bool willAssign
+        )
+        {
+            if (willAssign)
+            {
+                _roleAssignmentService.AssignRolesToTeam(service, entityId, rolesToAssign, tracer);
+            }
+            else
+            {
+                _roleAssignmentService.RemoveRolesFromTeam(
+                    service,
+                    entityId,
+                    rolesToAssign,
+                    tracer
+                );
+            }
         }
     }
 }
