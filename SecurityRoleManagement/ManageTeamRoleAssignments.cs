@@ -7,35 +7,35 @@ using static SecurityRoleManagement.Utilities.OutputUtilities;
 
 namespace SecurityRoleManagement
 {
-    internal class OutputParameters
-    {
-        public bool ManageTeamRoleAssignments_WasSuccessful { get; set; }
-        public string ManageTeamRoleAssignments_ErrorMessage { get; set; }
-
-        public OutputParameters(bool wasSuccesful, string errorMessage)
-        {
-            ManageTeamRoleAssignments_ErrorMessage = errorMessage;
-            ManageTeamRoleAssignments_WasSuccessful = wasSuccesful;
-        }
-
-        public Dictionary<string, object> ToDictionary()
-        {
-            return new Dictionary<string, object>
-            {
-                {
-                    "zen_ManageTeamRoleAssignments_WasSuccessful",
-                    ManageTeamRoleAssignments_WasSuccessful
-                },
-                {
-                    "zen_ManageTeamRoleAssignments_ErrorMessage",
-                    ManageTeamRoleAssignments_ErrorMessage
-                },
-            };
-        }
-    }
-
     public class ManageTeamRoleAssignments : PluginBase
     {
+        internal class OutputParameters
+        {
+            internal bool ManageTeamRoleAssignments_WasSuccessful { get; set; }
+            internal string ManageTeamRoleAssignments_ErrorMessage { get; set; }
+
+            internal OutputParameters(bool wasSuccesful, string errorMessage)
+            {
+                ManageTeamRoleAssignments_ErrorMessage = errorMessage;
+                ManageTeamRoleAssignments_WasSuccessful = wasSuccesful;
+            }
+
+            internal Dictionary<string, object> ToDictionary()
+            {
+                return new Dictionary<string, object>
+                {
+                    {
+                        "zen_ManageTeamRoleAssignments_WasSuccessful",
+                        ManageTeamRoleAssignments_WasSuccessful
+                    },
+                    {
+                        "zen_ManageTeamRoleAssignments_ErrorMessage",
+                        ManageTeamRoleAssignments_ErrorMessage
+                    },
+                };
+            }
+        }
+
         private readonly IRoleService _roleService;
         private readonly ITeamService _teamService;
         private readonly IRoleAssignmentService _roleAssignmentService;
