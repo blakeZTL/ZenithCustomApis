@@ -20,6 +20,18 @@ namespace SecurityRoleManagement.Services
             List<Entity> rolesToRemove,
             ITracingService tracer
         );
+        void AssignRolesToUser(
+            IOrganizationService service,
+            Guid userId,
+            List<Entity> rolesToAssign,
+            ITracingService tracer
+        );
+        void RemoveRolesFromUser(
+            IOrganizationService service,
+            Guid userId,
+            List<Entity> rolesToRemove,
+            ITracingService tracer
+        );
     }
 
     public enum AssignmnetType
@@ -81,6 +93,65 @@ namespace SecurityRoleManagement.Services
             try
             {
                 tracer.Trace($"Removing {rolesToRemove.Count} roles from team {teamId}");
+                service.Execute(disassociateRequest);
+            }
+            catch (Exception ex)
+            {
+                tracer.Trace($"Error removing roles: {ex.Message}");
+                throw;
+            }
+        }
+
+        public void AssignRolesToUser(
+            IOrganizationService service,
+            Guid userId,
+            List<Entity> rolesToAssign,
+            ITracingService tracer
+        )
+        {
+            AssociateRequest associateRequest = new AssociateRequest
+            {
+                Target = new EntityReference("systemuser", userId),
+                RelatedEntities = new EntityReferenceCollection(
+                    rolesToAssign.Select(r => new EntityReference(r.LogicalName, r.Id)).ToList()
+                ),
+                Relationship = new Relationship("systemuserroles_association"),
+            };
+            try
+            {
+                tracer.Trace($"Assigning {rolesToAssign.Count} roles to user {userId}");
+                service.Execute(associateRequest);
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("Cannot insert duplicate key"))
+                {
+                    tracer.Trace("Role is already assigned to the user");
+                    return;
+                }
+                tracer.Trace($"Error assigning roles: {ex.Message}");
+                throw;
+            }
+        }
+
+        public void RemoveRolesFromUser(
+            IOrganizationService service,
+            Guid userId,
+            List<Entity> rolesToRemove,
+            ITracingService tracer
+        )
+        {
+            DisassociateRequest disassociateRequest = new DisassociateRequest
+            {
+                Target = new EntityReference("systemuser", userId),
+                RelatedEntities = new EntityReferenceCollection(
+                    rolesToRemove.Select(r => new EntityReference(r.LogicalName, r.Id)).ToList()
+                ),
+                Relationship = new Relationship("systemuserroles_association"),
+            };
+            try
+            {
+                tracer.Trace($"Removing {rolesToRemove.Count} roles from user {userId}");
                 service.Execute(disassociateRequest);
             }
             catch (Exception ex)
