@@ -106,7 +106,7 @@ namespace CustomAPIs.SecurityRoleManagement
                 systemUsersCollection = RetrieveEntities(
                     sysService,
                     systerUsers,
-                    _systemUserService.RetrieveSystemUsers,
+                    _systemUserService.RetrieveSystemUsersWithRoles,
                     tracer
                 );
             }
