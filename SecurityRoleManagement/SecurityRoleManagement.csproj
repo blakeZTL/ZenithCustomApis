@@ -96,10 +96,12 @@
   <ItemGroup>
     <Compile Include="AssignRolesToTeams.cs" />
     <Compile Include="ManageTeamRoleAssignments.cs" />
+    <Compile Include="ManageUserRoleAssignment.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PluginBase.cs" />
     <Compile Include="Services\RoleAssignmentService.cs" />
     <Compile Include="Services\RoleService.cs" />
+    <Compile Include="Services\SystemUserService.cs" />
     <Compile Include="Services\TeamService.cs" />
     <Compile Include="Tests\RoleAssignmentServiceTests.cs" />
     <Compile Include="Utilities\OutputUtilities.cs" />
