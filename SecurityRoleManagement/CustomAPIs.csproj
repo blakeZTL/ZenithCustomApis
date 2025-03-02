@@ -103,8 +103,10 @@
     <Compile Include="Services\RoleAssignmentService.cs" />
     <Compile Include="Services\RoleService.cs" />
     <Compile Include="Services\SystemUserService.cs" />
+    <Compile Include="Services\TeamAssignmentService.cs" />
     <Compile Include="Services\TeamService.cs" />
     <Compile Include="Tests\RoleAssignmentServiceTests.cs" />
+    <Compile Include="UserTeamManagement\ManageUserTeamAssignment.cs" />
     <Compile Include="Utilities\OutputParameters.cs" />
     <Compile Include="Utilities\PluginUtilities.cs" />
   </ItemGroup>
